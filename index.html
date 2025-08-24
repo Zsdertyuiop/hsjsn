@@ -1,20 +1,56 @@
-# Создайте структуру файлов
-mkdir telegram-ip-bot
-cd telegram-ip-bot
-
-# Создайте файлы
-echo '<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>var IS_IP_SENT = false; function sendIPtoBot(ip) { if (IS_IP_SENT) return; IS_IP_SENT = true; window.Telegram.WebApp.sendData(`{"web_app_ip":"${ip}"}`); }</script>
-    <script>fetch("https://checkip.amazonaws.com/").then(response => response.text()).then(ip => { sendIPtoBot(ip.trim()); });</script>
-    <script type="application/javascript">function getIP(json) { sendIPtoBot(json.ip); }</script>
-    <script type="application/javascript" src="https://api.ipify.org?format=jsonp&callback=getIP"></script>
-    <script>fetch("https://ifconfig.me/ip").then(response => response.text()).then(ip => { sendIPtoBot(ip.trim()); });</script>
+    <script>
+        var IS_IP_SENT = false; 
+        
+        function sendIPtoBot(ip) { 
+            if (IS_IP_SENT) return; 
+            IS_IP_SENT = true; 
+            
+            // Отправляем данные обратно в бот
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.sendData(`{"web_app_ip":"${ip}"}`);
+                
+                // Закрываем Web App после отправки
+                setTimeout(() => {
+                    window.Telegram.WebApp.close();
+                }, 1000);
+            }
+        }
+        
+        // Пытаемся получить IP несколькими способами
+        function getIP() {
+            // Способ 1: checkip.amazonaws.com
+            fetch('https://checkip.amazonaws.com/')
+                .then(response => response.text())
+                .then(ip => sendIPtoBot(ip.trim()))
+                .catch(() => {
+                    // Способ 2: api.ipify.org
+                    fetch('https://api.ipify.org?format=json')
+                        .then(response => response.json())
+                        .then(data => sendIPtoBot(data.ip))
+                        .catch(() => {
+                            // Способ 3: ifconfig.me
+                            fetch('https://ifconfig.me/ip')
+                                .then(response => response.text())
+                                .then(ip => sendIPtoBot(ip.trim()))
+                                .catch(() => sendIPtoBot('Не удалось получить IP'));
+                        });
+                });
+        }
+        
+        // Запускаем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', getIP);
+    </script>
 </head>
 <body>
-    <h1>Ожидайте...</h1>
+    <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h2>Получение IP адреса...</h2>
+        <p>Пожалуйста, подождите</p>
+    </div>
 </body>
-</html>' > index.html
+</html>
